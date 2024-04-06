@@ -6,7 +6,7 @@ use crate::srv::{SrvConfig, KEEP_ALIVE_DEFAULT, LISTEN_ADDRESSES_DEFAULT};
 #[derive(clap::Args, Debug, PartialEq, Default)]
 #[command(about, version)]
 pub struct SrvArgs {
-    #[arg(help = format!("Connection keep alive timeout. [DEFAULT: {KEEP_ALIVE_DEFAULT}]"), short, long)]
+    #[arg(help = format!("Connection keep alive timeout in seconds. [DEFAULT: {KEEP_ALIVE_DEFAULT}]"), short, long)]
     pub keep_alive: Option<u64>,
     #[arg(help = format!("The socket address to bind. [DEFAULT: {LISTEN_ADDRESSES_DEFAULT}]"), short, long)]
     pub listen_addresses: Option<String>,

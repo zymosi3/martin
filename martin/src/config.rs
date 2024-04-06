@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::pin::Pin;
 
 use futures::future::try_join_all;
-use log::info;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use subst::VariableMap;
 
@@ -38,6 +38,8 @@ pub struct ServerState {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     pub cache_size_mb: Option<u64>,
+
+    pub cache_enabled: bool,
 
     #[serde(flatten)]
     pub srv: SrvConfig,
@@ -118,7 +120,13 @@ impl Config {
 
     pub async fn resolve(&mut self) -> MartinResult<ServerState> {
         let resolver = IdResolver::new(RESERVED_KEYWORDS);
-        let cache_size = self.cache_size_mb.unwrap_or(512) * 1024 * 1024;
+
+        let mut cache_size = self.cache_size_mb.unwrap_or(512) * 1024 * 1024;
+        if cache_size > 0 && !self.cache_enabled {
+            warn!("Cache is disabled on global level, cache-size is ignored")
+        }
+
+        cache_size = cache_size * self.cache_enabled as u64;
         let cache = if cache_size > 0 {
             info!("Initializing main cache with maximum size {cache_size}B");
             Some(

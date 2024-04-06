@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
+use enum_display::EnumDisplay;
 use log::warn;
+use serde::{Deserialize, Serialize};
 
 use crate::args::connections::Arguments;
 use crate::args::environment::Env;
@@ -30,6 +32,19 @@ pub struct Args {
     pub pg: Option<crate::args::pg::PgArgs>,
 }
 
+#[derive(PartialEq, Eq, Default, Debug, Clone, Copy, Serialize, Deserialize, ValueEnum, EnumDisplay)]
+#[serde(rename_all = "lowercase")]
+#[enum_display(case = "Kebab")]
+pub enum CacheMode {
+    /// Enable by default.
+    #[default]
+    Auto,
+    /// Enable cache in scope. Scope may be global, data source, or table / function level.
+    Enable,
+    /// Disable cache in scope.
+    Disable,
+}
+
 // None of these params will be transferred to the config
 #[derive(Parser, Debug, Clone, PartialEq, Default)]
 #[command(about, version)]
@@ -46,6 +61,9 @@ pub struct MetaArgs {
     /// Main cache size (in MB)
     #[arg(short = 'C', long)]
     pub cache_size: Option<u64>,
+    /// Cache mode
+    #[arg(short = 'M', long)]
+    pub cache: Option<CacheMode>,
     /// **Deprecated** Scan for new sources on sources list requests
     #[arg(short, long, hide = true)]
     pub watch: bool,
@@ -64,6 +82,15 @@ pub struct ExtraArgs {
     pub font: Vec<PathBuf>,
 }
 
+impl CacheMode {
+    fn enabled(&self) -> bool {
+        match *self {
+            CacheMode::Disable => false,
+            _ => true
+        }
+    }
+}
+
 impl Args {
     pub fn merge_into_config<'a>(
         self,
@@ -80,6 +107,8 @@ impl Args {
         if self.meta.cache_size.is_some() {
             config.cache_size_mb = self.meta.cache_size;
         }
+
+        config.cache_enabled = self.meta.cache.unwrap_or(CacheMode::Auto).enabled();
 
         self.srv.merge_into_config(&mut config.srv);
 
